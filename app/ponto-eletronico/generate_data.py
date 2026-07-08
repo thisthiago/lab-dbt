@@ -235,6 +235,22 @@ def populate_database(session, engine, is_admin_db, empresas_data):
     print("Population complete.")
 
 if __name__ == '__main__':
+    from sqlalchemy.exc import ProgrammingError, OperationalError
+    
+    # Check if data already exists
+    has_data = False
+    try:
+        with SessionAdmin() as s_admin:
+            if s_admin.query(Empresa).first():
+                has_data = True
+    except (ProgrammingError, OperationalError):
+        pass # Tables don't exist yet
+        
+    if has_data:
+        print("Data already exists in the database. Skipping generation.")
+        import sys
+        sys.exit(0)
+        
     reset_and_create_tables()
     
     empresas_data = generate_empresas()
