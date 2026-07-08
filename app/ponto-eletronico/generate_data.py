@@ -15,9 +15,11 @@ POSTGRES_USER = os.getenv('POSTGRES_USER', 'postgres')
 POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD', 'postgres')
 SISTEMAS_PORT = os.getenv('SISTEMAS_PORT', '5432')
 
+SISTEMAS_HOST = os.getenv('SISTEMAS_HOST', 'localhost')
+
 # Create connections
-URL_ADMIN = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@localhost:{SISTEMAS_PORT}/db_admin"
-URL_MOTORISTAS = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@localhost:{SISTEMAS_PORT}/db_motoristas"
+URL_ADMIN = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{SISTEMAS_HOST}:{SISTEMAS_PORT}/db_admin"
+URL_MOTORISTAS = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{SISTEMAS_HOST}:{SISTEMAS_PORT}/db_motoristas"
 
 engine_admin = create_engine(URL_ADMIN)
 engine_motoristas = create_engine(URL_MOTORISTAS)
