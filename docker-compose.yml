@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  postgres-sistemas:
+    image: postgres:15
+    container_name: postgres-sistemas
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${SISTEMAS_PORT:-5454}:5432"
+    volumes:
+      - postgres-sistemas-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  postgres-dw:
+    image: postgres:15
+    container_name: postgres-dw
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: db_dw
+    ports:
+      - "${DW_PORT:-5455}:5432"
+    volumes:
+      - postgres-dw-data:/var/lib/postgresql/data
+
+  data-generator:
+    build: ./app/ponto-eletronico
+    container_name: data-generator
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - SISTEMAS_HOST=postgres-sistemas
+      - SISTEMAS_PORT=5432
+    depends_on:
+      - postgres-sistemas
+
+  api:
+    build: ./app/api
+    container_name: api-ponto
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - SISTEMAS_HOST=postgres-sistemas
+      - SISTEMAS_PORT=5432
+      - WEB_USER=${WEB_USER:-admin}
+      - WEB_PASSWORD=${WEB_PASSWORD:-admin}
+    depends_on:
+      - postgres-sistemas
+
+  web:
+    build: ./app/web
+    container_name: web-ponto
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  postgres-sistemas-data:
+  postgres-dw-data:
