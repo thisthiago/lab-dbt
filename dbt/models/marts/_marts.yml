@@ -1,0 +1,103 @@
+# =============================================================================
+# models/marts/_marts.yml — Documentação e testes das tabelas do DW
+# =============================================================================
+
+version: 2
+
+models:
+
+  # ---------------------------------------------------------------------------
+  - name: dim_empresa
+    description: >
+      Dimensão de empresas. Contém 3 empresas compartilhadas pelos dois sistemas.
+      Usada como chave de agrupamento em todas as análises.
+    columns:
+      - name: sk_empresa
+        description: "Chave surrogate da dimensão empresa"
+        tests: [unique, not_null]
+      - name: cnpj
+        tests: [unique, not_null]
+      - name: razao_social
+        tests: [not_null]
+
+  # ---------------------------------------------------------------------------
+  - name: dim_funcionario
+    description: >
+      Dimensão de funcionários — combina admin e motoristas em uma única tabela.
+      Inclui dados enriquecidos: idade, tempo de empresa, faixas categóricas.
+      ATENÇÃO: contém dados sensíveis (CPF, salário). Ver vw_funcionarios_anonimizados.
+    columns:
+      - name: sk_funcionario
+        description: "Chave surrogate única (hash de sistema_origem + funcionario_id)"
+        tests: [unique, not_null]
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['Ativo', 'Demitido']
+      - name: sistema_origem
+        tests:
+          - accepted_values:
+              values: ['admin', 'motoristas']
+      - name: tempo_empresa_meses
+        description: "Tempo de empresa em meses (até data_demissao ou hoje)"
+        tests: [not_null]
+
+  # ---------------------------------------------------------------------------
+  - name: dim_data
+    description: >
+      Dimensão de tempo com calendário completo de 2018 a 2027.
+      Gerada diretamente pelo dbt (sem fonte OLTP).
+      sk_data = YYYYMMDD (ex: 20240115)
+    columns:
+      - name: sk_data
+        description: "Chave surrogate no formato YYYYMMDD"
+        tests: [unique, not_null]
+      - name: flag_dia_util
+        description: "TRUE para dias úteis (segunda a sexta-feira)"
+        tests: [not_null]
+
+  # ---------------------------------------------------------------------------
+  - name: fato_ponto
+    description: >
+      Fato principal do DW. Granularidade: 1 registro por funcionário por dia trabalhado.
+      Contém métricas de horas trabalhadas, extras, atrasos.
+    columns:
+      - name: sk_fato_ponto
+        description: "Chave surrogate da linha (hash de sk_funcionario + sk_data)"
+        tests: [unique, not_null]
+      - name: horas_trabalhadas
+        description: "Horas efetivamente trabalhadas no dia"
+        tests: [not_null]
+      - name: horas_extras
+        description: "Horas acima da jornada contratada (≥ 0)"
+        tests: [not_null]
+      - name: sk_funcionario
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_funcionario')
+              field: sk_funcionario
+      - name: sk_data
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_data')
+              field: sk_data
+
+  # ---------------------------------------------------------------------------
+  - name: fato_ferias
+    description: >
+      Fato de férias. Granularidade: 1 registro por período de férias.
+      Inclui chaves para data_inicio e data_fim na dim_data.
+    columns:
+      - name: sk_fato_ferias
+        tests: [unique, not_null]
+      - name: dias_ferias
+        description: "Duração do período de férias em dias corridos"
+        tests: [not_null]
+      - name: sk_funcionario
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_funcionario')
+              field: sk_funcionario

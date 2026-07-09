@@ -1,0 +1,33 @@
+# =============================================================================
+# models/intermediate/_intermediate.yml
+# =============================================================================
+
+version: 2
+
+models:
+
+  - name: int_funcionarios_unificados
+    description: >
+      União completa de todos os funcionários dos dois sistemas (admin + motoristas).
+      Inclui uma chave surrogate única (sk_funcionario) baseada em hash de
+      sistema_origem + funcionario_id, garantindo unicidade entre sistemas.
+    columns:
+      - name: sk_funcionario
+        description: "Chave surrogate única gerada por hash MD5(sistema_origem + funcionario_id)"
+        tests: [unique, not_null]
+      - name: sistema_origem
+        tests:
+          - accepted_values:
+              values: ['admin', 'motoristas']
+
+  - name: int_apontamentos_diarios
+    description: >
+      Apontamentos consolidados por dia por funcionário.
+      Parea automaticamente batidas de entrada e saída para calcular
+      as horas efetivamente trabalhadas em cada dia.
+    columns:
+      - name: horas_trabalhadas
+        description: "Total de horas trabalhadas no dia (soma dos intervalos entrada→saída)"
+        tests: [not_null]
+      - name: num_pares_batida
+        description: "Quantidade de pares de entrada/saída no dia (2 = padrão; 4 com intervalo de almoço)"

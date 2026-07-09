@@ -1,0 +1,16 @@
+# =============================================================================
+# packages.yml — Dependências externas do projeto dbt
+# =============================================================================
+# Define pacotes dbt de terceiros que o projeto utiliza.
+# Após adicionar/alterar este arquivo, execute:
+#   dbt deps
+#
+# Documentação: https://docs.getdbt.com/docs/build/packages
+# =============================================================================
+
+packages:
+  # dbt-utils: Coleção de macros utilitárias mantida pela dbt Labs
+  # Usamos principalmente: generate_surrogate_key, date_spine
+  # https://hub.getdbt.com/dbt-labs/dbt_utils/latest/
+  - package: dbt-labs/dbt_utils
+    version: [">=1.0.0", "<2.0.0"]

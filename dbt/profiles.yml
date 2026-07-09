@@ -1,0 +1,33 @@
+# =============================================================================
+# profiles.yml — Configuração de conexão com o banco de dados
+# =============================================================================
+# ⚠️  ATENÇÃO: Em produção, este arquivo NUNCA deve ser commitado no git!
+#    Ele contém credenciais de banco de dados.
+#    Para este lab educacional, mantemos aqui para facilitar o onboarding.
+#
+# Localização padrão: ~/.dbt/profiles.yml (fora do projeto)
+# Para usar no projeto local, defina a variável DBT_PROFILES_DIR:
+#   export DBT_PROFILES_DIR=$(pwd)   # Linux/Mac
+#   $env:DBT_PROFILES_DIR = (Get-Location).Path   # PowerShell
+#
+# Documentação: https://docs.getdbt.com/docs/core/connect-data-platform/profiles.yml
+# =============================================================================
+
+lab_dbt_mba:
+  target: dev
+
+  outputs:
+
+    # --- Ambiente de desenvolvimento ---
+    # Aponta para o Data Warehouse (postgres-dw, porta 5455)
+    dev:
+      type: postgres
+      host: localhost
+      port: 5455          # porta mapeada pelo docker-compose para postgres-dw
+      user: postgres
+      password: postgres
+      dbname: db_dw       # banco de destino (onde o dbt vai criar os modelos)
+      schema: public      # schema padrão (cada camada terá seu próprio schema via +schema)
+      threads: 4          # paralelismo: quantos modelos rodar simultaneamente
+      keepalives_idle: 0
+      connect_timeout: 10

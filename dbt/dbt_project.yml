@@ -1,0 +1,66 @@
+# =============================================================================
+# dbt_project.yml — Configuração principal do projeto dbt
+# =============================================================================
+# Este é o arquivo central do projeto. Ele define:
+#   - Nome e versão do projeto
+#   - Qual profile usar (definido no profiles.yml)
+#   - Onde ficam os modelos, macros, testes, etc.
+#   - Materialização padrão de cada camada
+#
+# Documentação: https://docs.getdbt.com/reference/dbt_project.yml
+# =============================================================================
+
+name: 'lab_dbt_mba'
+version: '1.0.0'
+config-version: 2
+
+# Profile a ser usado (deve existir no profiles.yml)
+profile: 'lab_dbt_mba'
+
+# Diretórios do projeto
+model-paths:    ["models"]
+analysis-paths: ["analyses"]
+test-paths:     ["tests"]
+seed-paths:     ["seeds"]
+macro-paths:    ["macros"]
+snapshot-paths: ["snapshots"]
+docs-paths:     ["docs"]
+
+# Diretórios gerados (não commitar)
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# =============================================================================
+# Configuração dos modelos por camada
+# Cada camada tem uma materialização e um schema diferente no Data Warehouse
+# =============================================================================
+models:
+  lab_dbt_mba:
+
+    # --- STAGING ---
+    # Views simples que limpam e renomeiam os dados da fonte
+    # Não são tabelas físicas, apenas abstrações SQL
+    staging:
+      +materialized: view
+      +schema: staging          # db_dw.staging.*
+
+    # --- INTERMEDIATE ---
+    # Modelos de transformação complexa usados por outros modelos
+    # "ephemeral" = não cria objeto no banco; vira CTE inline
+    intermediate:
+      +materialized: ephemeral
+
+    # --- MARTS ---
+    # Tabelas físicas do Data Warehouse (fatos e dimensões)
+    # "table" = cria tabela física; melhor performance para BI
+    marts:
+      +materialized: table
+      +schema: marts            # db_dw.marts.*
+
+    # --- ANALYTICS ---
+    # Views analíticas prontas para consumo pelo analista de RH
+    analytics:
+      +materialized: view
+      +schema: analytics        # db_dw.analytics.*

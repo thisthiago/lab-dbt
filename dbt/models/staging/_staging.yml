@@ -1,0 +1,126 @@
+# =============================================================================
+# models/staging/_staging.yml — Documentação e testes da camada Staging
+# =============================================================================
+# Este arquivo define:
+#   - Descrições de cada modelo e suas colunas
+#   - Testes de qualidade de dados (unique, not_null, accepted_values)
+#
+# Os testes são executados com: dbt test --select staging
+# =============================================================================
+
+version: 2
+
+models:
+
+  # ---------------------------------------------------------------------------
+  - name: stg_admin__empresas
+    description: "Empresas cadastradas no sistema administrativo, padronizadas para o DW."
+    columns:
+      - name: empresa_id
+        description: "Chave natural da empresa (herdada do OLTP)"
+        tests: [unique, not_null]
+      - name: cnpj
+        description: "CNPJ da empresa"
+        tests: [unique, not_null]
+      - name: razao_social
+        tests: [not_null]
+
+  # ---------------------------------------------------------------------------
+  - name: stg_admin__funcionarios
+    description: >
+      Funcionários administrativos (Mensalistas, Horistas e Estagiários).
+      Inclui ativos e demitidos. Dado sensível: CPF e salário.
+    columns:
+      - name: funcionario_id
+        tests: [unique, not_null]
+      - name: cpf
+        description: "CPF — dado sensível (LGPD Artigo 5º, inciso II)"
+        tests: [unique, not_null]
+      - name: sistema_origem
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['admin']
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['Ativo', 'Demitido']
+      - name: categoria
+        tests:
+          - accepted_values:
+              values: ['Mensalista', 'Horista', 'Estagiário']
+      - name: salario
+        tests: [not_null]
+
+  # ---------------------------------------------------------------------------
+  - name: stg_admin__apontamentos
+    description: "Registros brutos de entrada/saída do sistema administrativo."
+    columns:
+      - name: apontamento_id
+        tests: [unique, not_null]
+      - name: tipo
+        tests:
+          - accepted_values:
+              values: ['Entrada', 'Saída']
+      - name: sistema_origem
+        tests:
+          - accepted_values:
+              values: ['admin']
+
+  # ---------------------------------------------------------------------------
+  - name: stg_admin__ferias
+    description: "Períodos de férias dos funcionários administrativos."
+    columns:
+      - name: ferias_id
+        tests: [unique, not_null]
+      - name: dias_ferias
+        description: "Duração em dias (data_fim - data_inicio)"
+        tests: [not_null]
+
+  # ---------------------------------------------------------------------------
+  - name: stg_admin__ajustes
+    description: "Solicitações de ajuste de ponto do sistema administrativo."
+    columns:
+      - name: ajuste_id
+        tests: [unique, not_null]
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['Pendente', 'Aprovado', 'Reprovado']
+
+  # ---------------------------------------------------------------------------
+  - name: stg_motoristas__funcionarios
+    description: >
+      Motoristas da área de Logística. Todos com setor=Transporte,
+      departamento=Logística, cargo=Motorista.
+    columns:
+      - name: funcionario_id
+        tests: [unique, not_null]
+      - name: cpf
+        tests: [unique, not_null]
+      - name: sistema_origem
+        tests:
+          - accepted_values:
+              values: ['motoristas']
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['Ativo', 'Demitido']
+
+  # ---------------------------------------------------------------------------
+  - name: stg_motoristas__apontamentos
+    description: "Registros de ponto dos motoristas."
+    columns:
+      - name: apontamento_id
+        tests: [unique, not_null]
+      - name: tipo
+        tests:
+          - accepted_values:
+              values: ['Entrada', 'Saída']
+
+  # ---------------------------------------------------------------------------
+  - name: stg_motoristas__ferias
+    description: "Férias dos motoristas."
+    columns:
+      - name: ferias_id
+        tests: [unique, not_null]
