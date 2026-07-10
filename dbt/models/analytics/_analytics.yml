@@ -1,100 +1,21 @@
-# =============================================================================
-# models/analytics/_analytics.yml — Documentação das Visões Analíticas
-# =============================================================================
-
 version: 2
 
 models:
 
-  # ---------------------------------------------------------------------------
   - name: analytic_horas_mensais
     description: >
       Consolidação mensal de horas trabalhadas por funcionário.
-      Inclui saldo de horas (positivo = banco de horas; negativo = débito),
-      total de horas extras e contagem de dias com atraso.
-      Base para o banco de horas acumulado.
+      Inclui saldo de horas (positivo = banco de horas; negativo = débito).
 
-  # ---------------------------------------------------------------------------
-  - name: analytic_banco_horas
-    description: >
-      Saldo acumulado de horas por funcionário ao longo do tempo.
-      Equivalente a um extrato bancário de horas: mostra crédito ou débito
-      acumulado mês a mês usando window function (SUM OVER).
-
-  # ---------------------------------------------------------------------------
-  - name: analytic_atrasos_por_funcionario
-    description: >
-      Ranking de atrasos por funcionário e departamento a cada mês.
-      Inclui percentual de dias com atraso e classificação automática
-      de pontualidade (Pontual / Eventual / Frequente / Crítico).
-
-  # ---------------------------------------------------------------------------
   - name: analytic_absenteismo_departamento
     description: >
       Taxa de absenteísmo por departamento e mês.
-      Compara dias de presença com dias úteis possíveis para calcular
-      a taxa de faltas. Classifica o nível (Baixo / Moderado / Alto / Crítico).
+      Compara dias de presença com dias úteis possíveis para calcular a taxa.
 
-  # ---------------------------------------------------------------------------
-  - name: analytic_ferias_vencidas
-    description: >
-      Listagem de funcionários ativos com direito a férias em risco de vencer.
-      Identifica passivo trabalhista antes de virar multa (CLT art. 137).
-      Classificação: Regular / Monitorar / ATENÇÃO / VENCIDAS — Risco Legal.
-
-  # ---------------------------------------------------------------------------
-  - name: analytic_ajustes_ponto_ranking
-    description: >
-      Frequência e taxa de aprovação de solicitações de ajuste de ponto.
-      Detecta funcionários e departamentos com padrão problemático de
-      esquecimento de batida. Inclui motivo mais frequente por funcionário.
-
-  # ---------------------------------------------------------------------------
-  - name: analytic_headcount_mensal
-    description: >
-      Evolução histórica do headcount por empresa/departamento/cargo.
-      Usa lógica de snapshot: para cada mês, conta quem estava ativo.
-      Inclui salário médio e folha total estimada no snapshot.
-
-  # ---------------------------------------------------------------------------
-  - name: analytic_turnover_mensal
-    description: >
-      Taxa de rotatividade mensal por empresa e departamento.
-      Combina admissões e desligamentos para calcular o turnover.
-      Inclui saldo líquido de headcount e classificação de risco.
-
-  # ---------------------------------------------------------------------------
-  - name: analytic_antiguidade_funcionarios
-    description: >
-      Distribuição de funcionários por faixa de tempo de casa.
-      Essencial para planejamento de sucessão e análise de risco de
-      perda de conhecimento tácito. Inclui flag_risco_conhecimento_tacito
-      quando mais de 40% do grupo tem menos de 1 ano de empresa.
-
-  # ---------------------------------------------------------------------------
-  - name: analytic_custo_hora_departamento
-    description: >
-      Custo por hora trabalhada por departamento, mês a mês.
-      Diferencia custo teórico (salário/jornada) do custo efetivo
-      (massa salarial/horas reais). Útil para precificação de projetos
-      e análise de eficiência da força de trabalho.
-
-  # ---------------------------------------------------------------------------
-  - name: analytic_distribuicao_salarial
-    description: >
-      Análise estatística de salários: mín, máx, média, mediana, P25, P75,
-      IQR, desvio padrão e coeficiente de variação.
-      Permite identificar anomalias, bandas salariais e equidade de remuneração.
-
-  # ---------------------------------------------------------------------------
   - name: vw_funcionarios_anonimizados
     description: >
-      View com dados de funcionários anonimizados conforme LGPD (Lei 13.709/2018).
-      CPF substituído por hash SHA-256 (irreversível), nome mascarado
-      (apenas iniciais), salário substituído por faixa categórica.
-      Permite análises de RH sem expor dados pessoais identificáveis.
+      View com dados de funcionários anonimizados conforme LGPD.
+      CPF substituído por hash SHA-256 e nome mascarado.
     columns:
       - name: cpf_hash_sha256
-        description: "Hash SHA-256 do CPF (64 caracteres hexadecimais, não reversível)"
       - name: nome_anonimizado
-        description: "Nome com apenas a inicial de cada parte (ex: J*** S***)"

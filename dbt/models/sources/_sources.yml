@@ -1,65 +1,28 @@
-# =============================================================================
-# models/sources/_sources.yml — Declaração das fontes de dados (PASSO 1)
-# =============================================================================
-# O bloco "sources" registra as tabelas de origem no catálogo do dbt.
-# Isso permite:
-#   - Referenciar tabelas com {{ source('nome', 'tabela') }} nos modelos
-#   - Rodar testes de qualidade diretamente nas fontes
-#   - Ver a linhagem (lineage) completa no dbt docs
-#
-# As tabelas de raw_admin e raw_motoristas são Foreign Tables criadas
-# pelo script setup_fdw.sql — elas apontam para os bancos OLTP originais.
-#
-# Documentação: https://docs.getdbt.com/docs/build/sources
-# =============================================================================
-
 version: 2
 
 sources:
 
   # ---------------------------------------------------------------------------
   # FONTE: Sistema Administrativo (db_admin via postgres_fdw)
-  # Contém: funcionários administrativos, estagiários
   # ---------------------------------------------------------------------------
   - name: admin
     description: >
       Sistema de Ponto Eletrônico para funcionários administrativos e estagiários.
-      Os dados são acessados via PostgreSQL Foreign Data Wrapper (FDW) a partir
-      de db_admin, importados no schema raw_admin do Data Warehouse.
     database: db_dw
     schema: raw_admin
     tables:
-
-      - name: empresa
-        description: "Cadastro das empresas do grupo. Compartilhado com o sistema de motoristas."
-        columns:
-          - name: id
-            description: "Identificador único da empresa"
-            tests: [unique, not_null]
-          - name: cnpj
-            description: "CNPJ da empresa (formato XX.XXX.XXX/XXXX-XX)"
-            tests: [unique, not_null]
-          - name: razao_social
-            tests: [not_null]
-
       - name: funcionario
         description: >
           Cadastro de funcionários administrativos (Mensalistas, Horistas e Estagiários).
-          Contém dados sensíveis: CPF, salário, data de nascimento.
         columns:
           - name: id
             tests: [unique, not_null]
           - name: cpf
-            description: "CPF do funcionário — dado sensível (LGPD)"
             tests: [unique, not_null]
           - name: status
             tests:
               - accepted_values:
                   values: ['Ativo', 'Demitido']
-          - name: categoria
-            tests:
-              - accepted_values:
-                  values: ['Mensalista', 'Horista', 'Estagiário']
 
       - name: apontamento
         description: "Registros brutos de bate-ponto (entrada e saída)."
@@ -71,45 +34,18 @@ sources:
               - accepted_values:
                   values: ['Entrada', 'Saída']
 
-      - name: ferias
-        description: "Períodos de férias programadas por funcionário."
-        columns:
-          - name: id
-            tests: [unique, not_null]
-
-      - name: solicitacao_ajuste
-        description: "Solicitações de correção de ponto (esquecimento, falha no sistema, etc.)"
-        columns:
-          - name: id
-            tests: [unique, not_null]
-          - name: status
-            tests:
-              - accepted_values:
-                  values: ['Pendente', 'Aprovado', 'Reprovado']
-
   # ---------------------------------------------------------------------------
   # FONTE: Sistema de Motoristas (db_motoristas via postgres_fdw)
-  # Contém: motoristas da logística
   # ---------------------------------------------------------------------------
   - name: motoristas
     description: >
       Sistema de Ponto Eletrônico exclusivo para motoristas da área de Logística.
-      Compartilha as mesmas 3 empresas do sistema administrativo.
-      Acessado via FDW a partir de db_motoristas, importado em raw_motoristas.
     database: db_dw
     schema: raw_motoristas
     tables:
-
-      - name: empresa
-        description: "Cadastro de empresas (mesmo dataset do sistema admin)"
-        columns:
-          - name: id
-            tests: [unique, not_null]
-
       - name: funcionario
         description: >
-          Cadastro de motoristas. Todos têm setor='Transporte',
-          departamento='Logística', cargo='Motorista'.
+          Cadastro de motoristas.
         columns:
           - name: id
             tests: [unique, not_null]
@@ -129,9 +65,3 @@ sources:
             tests:
               - accepted_values:
                   values: ['Entrada', 'Saída']
-
-      - name: ferias
-        description: "Férias dos motoristas"
-        columns:
-          - name: id
-            tests: [unique, not_null]
