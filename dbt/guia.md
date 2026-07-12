@@ -8,9 +8,22 @@ A ideia é que você construa o Data Warehouse camada por camada, do básico ao 
 
 ## 🏗️ Passo 0: Inicializando o Projeto (Como Criar do Zero)
 
-Se você estivesse criando este projeto completamente do zero, a forma oficial de iniciar é utilizando o comando `dbt init` no terminal:
+Se você estivesse criando este projeto completamente do zero, a forma oficial de iniciar é seguindo estas etapas no terminal:
 
-0. Instale o dbt-postgres e dependências rodando: `pip install pandas sqlalchemy psycopg2-binary dbt-postgres`
+**1. Instalar o dbt (Core e Adaptador do Postgres)**
+Primeiro, é necessário instalar o núcleo do dbt (`dbt-core`) e o adaptador específico para o seu banco de dados (`dbt-postgres`), além das bibliotecas que usaremos no nosso script de carga.
+
+```bash
+pip install dbt-core dbt-postgres pandas sqlalchemy psycopg2-binary
+```
+
+Você pode verificar se a instalação deu certo rodando:
+```bash
+dbt --version
+```
+
+**2. Iniciar o projeto (dbt init)**
+Com o dbt instalado, rodamos o comando oficial de inicialização:
 
 ```bash
 dbt init meu_projeto_dbt
@@ -21,9 +34,9 @@ dbt init meu_projeto_dbt
 2. Ele pede os dados de conexão do banco e os salva em um arquivo global oculto chamado `profiles.yml` (geralmente em `~/.dbt/profiles.yml` ou `C:\Users\usuario\.dbt\profiles.yml`).
 3. Ele cria toda a estrutura inicial de pastas (`models/`, `macros/`, `tests/` e o arquivo `dbt_project.yml`).
 
-**A Dica de Ouro para Projetos e Git:**
-Para facilitar o uso do repositório em aula e evitar que cada aluno precise configurar arquivos ocultos em suas próprias máquinas, nós **trazemos o arquivo `profiles.yml` para a raiz do projeto**.
-Ao fazer isso, os alunos podem apenas clonar o repositório e executar os comandos usando a flag `--profiles-dir .` (ex: `dbt debug --profiles-dir .`), que obriga o dbt a ler as credenciais da pasta atual, tornando o projeto 100% portátil!
+> **A Dica de Ouro para Projetos e Git:**
+> Para facilitar o uso do repositório em aula e evitar que cada aluno precise configurar arquivos ocultos em suas próprias máquinas, nós **trazemos o arquivo `profiles.yml` para a raiz do projeto**.
+> Ao fazer isso, os alunos podem apenas clonar o repositório e executar os comandos usando a flag `--profiles-dir .` (ex: `dbt debug --profiles-dir .`), que obriga o dbt a ler as credenciais da pasta atual, tornando o projeto 100% portátil!
 
 ---
 
