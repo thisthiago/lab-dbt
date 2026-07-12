@@ -23,7 +23,43 @@ Sempre que houver um comando, rode-o **antes de seguir para a próxima etapa** �
 
 ## 🏗️ Etapa 0 — Preparando o ambiente
 
-### 0.1 Instalar o dbt e as dependências
+### 0.1 Criar e ativar um ambiente virtual (venv) — **sempre façam isso primeiro**
+
+Antes de instalar qualquer coisa, criem um ambiente virtual isolado só para este projeto. Isso evita dois problemas bem comuns: pacotes instalados no lugar errado (o Python "do usuário", que costuma não ficar visível no PATH) e conflito com outras instalações de dbt que já possam existir na máquina (inclusive o **dbt Fusion**, um motor novo e diferente do dbt-core que algumas pessoas já têm instalado sem saber, seja por engano seja pela extensão dbt do VS Code).
+
+**Mac/Linux:**
+```bash
+cd caminho/para/o/projeto
+python3 -m venv venv
+source venv/bin/activate
+```
+
+**Windows (PowerShell):**
+```powershell
+cd caminho\para\o\projeto
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+> 💻 **Nota para quem está no Windows:** se a ativação falhar com um erro de "execução de scripts desabilitada", rode uma vez (peça para rodar como administrador, se pedir):
+> ```powershell
+> Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+> ```
+> e tentem ativar de novo. (No cmd, em vez do `.ps1`, o comando seria `venv\Scripts\activate.bat`.)
+
+### ✅ Checkpoint antes de continuar — não pulem isso
+
+Depois de ativar, o início da linha do terminal **precisa** mostrar `(venv)`:
+
+```
+(venv) PS C:\Users\thiag\codes\teste-dbt>
+```
+
+**Se não aparecer `(venv)`, não sigam em frente** — a ativação não funcionou, e qualquer `pip install` rodado a partir daqui vai instalar os pacotes no lugar errado (fora do projeto), o que pode causar exatamente o mesmo problema de "comando não encontrado" que vimos durante os testes desta aula.
+
+### 0.2 Instalar o dbt e as dependências
+
+Com o `(venv)` confirmado, instalem tudo:
 
 ```bash
 pip install dbt-core dbt-postgres pandas sqlalchemy psycopg2-binary
@@ -33,21 +69,17 @@ pip install dbt-core dbt-postgres pandas sqlalchemy psycopg2-binary
 - `dbt-core`: o motor do dbt (interpreta os arquivos `.sql` e `.yml` e gera SQL final).
 - `dbt-postgres`: o "adaptador" que ensina o dbt a falar especificamente com PostgreSQL (existem adaptadores equivalentes para BigQuery, Snowflake, etc.).
 - `pandas`, `sqlalchemy`, `psycopg2-binary`: usados pelo nosso script Python de carga de dados (`load_dw.py`), não pelo dbt em si.
+- `psycopg2-binary` é a versão pré-compilada do driver do Postgres — por isso pedimos ela e não `psycopg2` puro, que exige compilador C instalado (principalmente chato no Windows). Não troquem por `psycopg2` sem necessidade.
 
 Confirme que a instalação funcionou:
 ```bash
 dbt --version
 ```
+O resultado deve mostrar algo como `1.x.x` (a versão do dbt-core). **Se aparecer "dbt-fusion" em vez disso**, é sinal de que existe outra instalação de dbt na máquina tomando prioridade no PATH — nesse caso, chamem o professor/monitor antes de seguir, porque os comandos deste guia foram pensados para o dbt-core, não para o Fusion (que ainda está em beta e pode não suportar tudo que vamos usar, como o pacote `dbt-utils`).
 
-> 💻 **Nota para quem está no Windows:**
-> - Se o comando `pip` não for reconhecido, tente `python -m pip install ...` no lugar de `pip install ...` (garante que está usando o pip da mesma instalação do Python que está no PATH).
-> - Se estiverem usando um ambiente virtual (`venv`) e a ativação falhar no PowerShell com um erro de "execução de scripts desabilitada", rode uma vez (como administrador, se pedir):
->   ```powershell
->   Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
->   ```
->   e tentem ativar de novo com `.\venv\Scripts\Activate.ps1` (no cmd seria `venv\Scripts\activate.bat`).
-> - `psycopg2-binary` é a versão pré-compilada do driver do Postgres — por isso pedimos ela e não `psycopg2` puro, que exige compilador C instalado no Windows. Não troquem por `psycopg2` sem necessidade.
-> - Fora esses pontos, `dbt deps`, `dbt debug`, `dbt run`, `dbt build`, `--profiles-dir .` etc. funcionam exatamente igual no Windows, macOS e Linux — são comandos do próprio dbt, não do sistema operacional.
+> 💻 **Nota geral para quem está no Windows:** fora esses pontos, `dbt deps`, `dbt debug`, `dbt run`, `dbt build`, `--profiles-dir .` etc. funcionam exatamente igual no Windows, macOS e Linux — são comandos do próprio dbt, não do sistema operacional.
+
+> ⚠️ **Lembrete para toda a aula:** o `venv` precisa ser **reativado toda vez que abrirem um terminal novo** (ele não fica ativo permanentemente). Sempre que for rodar um comando `dbt` ou `python`, confiram primeiro se o `(venv)` está aparecendo no início da linha.
 
 ### 0.2 Entendendo o `dbt init` (contexto — vocês não vão rodar isso na aula)
 
