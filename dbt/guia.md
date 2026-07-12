@@ -6,6 +6,27 @@ A ideia é que você construa o Data Warehouse camada por camada, do básico ao 
 
 ---
 
+## 🏗️ Passo 0: Inicializando o Projeto (Como Criar do Zero)
+
+Se você estivesse criando este projeto completamente do zero, a forma oficial de iniciar é utilizando o comando `dbt init` no terminal:
+
+0. Instale o dbt-postgres e dependências rodando: `pip install pandas sqlalchemy psycopg2-binary dbt-postgres`
+
+```bash
+dbt init meu_projeto_dbt
+```
+
+**O que esse comando faz?**
+1. Ele faz perguntas interativas no terminal (ex: qual banco de dados usar? No nosso caso, seria `postgres`).
+2. Ele pede os dados de conexão do banco e os salva em um arquivo global oculto chamado `profiles.yml` (geralmente em `~/.dbt/profiles.yml` ou `C:\Users\usuario\.dbt\profiles.yml`).
+3. Ele cria toda a estrutura inicial de pastas (`models/`, `macros/`, `tests/` e o arquivo `dbt_project.yml`).
+
+**A Dica de Ouro para Projetos e Git:**
+Para facilitar o uso do repositório em aula e evitar que cada aluno precise configurar arquivos ocultos em suas próprias máquinas, nós **trazemos o arquivo `profiles.yml` para a raiz do projeto**.
+Ao fazer isso, os alunos podem apenas clonar o repositório e executar os comandos usando a flag `--profiles-dir .` (ex: `dbt debug --profiles-dir .`), que obriga o dbt a ler as credenciais da pasta atual, tornando o projeto 100% portátil!
+
+---
+
 ## 🛠️ Passo 1: Configuração do Projeto e Conexão
 
 Antes de escrever qualquer transformação de dados, precisamos configurar o ambiente do dbt para ele saber onde conectar e como se comportar.
