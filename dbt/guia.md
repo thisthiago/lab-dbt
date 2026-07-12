@@ -1,176 +1,236 @@
 # 🚀 Guia Passo a Passo: Construindo seu Primeiro Projeto dbt
 
-Este guia foi desenhado para você que tem **zero experiência com dbt**. Ele vai te pegar pela mão e mostrar exatamente **quais arquivos criar, onde criá-los e qual o objetivo de cada um**, na ordem exata de implementação.
+Este guia foi desenhado para quem tem **zero experiência com dbt**. Ele mostra, na **ordem exata de execução**, quais arquivos criar, onde criá-los, para que servem e quais comandos rodar em cada etapa.
 
-A ideia é que você construa o Data Warehouse camada por camada, do básico ao avançado. Vamos começar!
+**A lógica do projeto:** vamos construir o Data Warehouse **camada por camada**, do dado bruto até a visão final de negócio:
+
+```
+Fontes (raw) → Staging (limpeza) → Intermediate (regras de negócio) → Marts (fatos e dimensões) → Analytics (visões prontas)
+```
 
 ---
 
-## 🏗️ Passo 0: Inicializando o Projeto (Como Criar do Zero)
+## 🧭 Antes de começar: como este guia funciona
 
-Se você estivesse criando este projeto completamente do zero, a forma oficial de iniciar é seguindo estas etapas no terminal:
+Cada etapa abaixo tem três partes:
+- **📄 Arquivo(s):** o que criar e onde.
+- **💡 O que é / por que existe:** a explicação conceitual.
+- **⌨️ Comando:** o que rodar no terminal *naquele momento* (quando existir).
 
-**1. Instalar o dbt (Core e Adaptador do Postgres)**
-Primeiro, é necessário instalar o núcleo do dbt (`dbt-core`) e o adaptador específico para o seu banco de dados (`dbt-postgres`), além das bibliotecas que usaremos no nosso script de carga.
+Sempre que houver um comando, rode-o **antes de seguir para a próxima etapa** — isso evita acumular erros.
+
+---
+
+## 🏗️ Etapa 0 — Preparando o ambiente
+
+### 0.1 Instalar o dbt e as dependências
 
 ```bash
 pip install dbt-core dbt-postgres pandas sqlalchemy psycopg2-binary
 ```
 
-Você pode verificar se a instalação deu certo rodando:
+**O que cada pacote faz:**
+- `dbt-core`: o motor do dbt (interpreta os arquivos `.sql` e `.yml` e gera SQL final).
+- `dbt-postgres`: o "adaptador" que ensina o dbt a falar especificamente com PostgreSQL (existem adaptadores equivalentes para BigQuery, Snowflake, etc.).
+- `pandas`, `sqlalchemy`, `psycopg2-binary`: usados pelo nosso script Python de carga de dados (`load_dw.py`), não pelo dbt em si.
+
+Confirme que a instalação funcionou:
 ```bash
 dbt --version
 ```
 
-**2. Iniciar o projeto (dbt init)**
-Com o dbt instalado, rodamos o comando oficial de inicialização:
+> 💻 **Nota para quem está no Windows:**
+> - Se o comando `pip` não for reconhecido, tente `python -m pip install ...` no lugar de `pip install ...` (garante que está usando o pip da mesma instalação do Python que está no PATH).
+> - Se estiverem usando um ambiente virtual (`venv`) e a ativação falhar no PowerShell com um erro de "execução de scripts desabilitada", rode uma vez (como administrador, se pedir):
+>   ```powershell
+>   Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+>   ```
+>   e tentem ativar de novo com `.\venv\Scripts\Activate.ps1` (no cmd seria `venv\Scripts\activate.bat`).
+> - `psycopg2-binary` é a versão pré-compilada do driver do Postgres — por isso pedimos ela e não `psycopg2` puro, que exige compilador C instalado no Windows. Não troquem por `psycopg2` sem necessidade.
+> - Fora esses pontos, `dbt deps`, `dbt debug`, `dbt run`, `dbt build`, `--profiles-dir .` etc. funcionam exatamente igual no Windows, macOS e Linux — são comandos do próprio dbt, não do sistema operacional.
 
+### 0.2 Entendendo o `dbt init` (contexto — vocês não vão rodar isso na aula)
+
+Em um projeto criado do zero, o comando oficial de inicialização é:
 ```bash
 dbt init meu_projeto_dbt
 ```
 
-**O que esse comando faz?**
-1. Ele faz perguntas interativas no terminal (ex: qual banco de dados usar? No nosso caso, seria `postgres`).
-2. Ele pede os dados de conexão do banco e os salva em um arquivo global oculto chamado `profiles.yml` (geralmente em `~/.dbt/profiles.yml` ou `C:\Users\usuario\.dbt\profiles.yml`).
-3. Ele cria toda a estrutura inicial de pastas (`models/`, `macros/`, `tests/` e o arquivo `dbt_project.yml`).
+Esse comando:
+1. Faz perguntas interativas no terminal (ex: qual banco de dados usar → `postgres`).
+2. Pede os dados de conexão e os salva em um arquivo **oculto e global**, geralmente em `~/.dbt/profiles.yml` (Mac/Linux) ou `C:\Users\usuario\.dbt\profiles.yml` (Windows).
+3. Cria a estrutura inicial de pastas: `models/`, `macros/`, `tests/` e o arquivo `dbt_project.yml`.
 
-> **A Dica de Ouro para Projetos e Git:**
-> Para facilitar o uso do repositório em aula e evitar que cada aluno precise configurar arquivos ocultos em suas próprias máquinas, nós **trazemos o arquivo `profiles.yml` para a raiz do projeto**.
-> Ao fazer isso, os alunos podem apenas clonar o repositório e executar os comandos usando a flag `--profiles-dir .` (ex: `dbt debug --profiles-dir .`), que obriga o dbt a ler as credenciais da pasta atual, tornando o projeto 100% portátil!
-
----
-
-## 🛠️ Passo 1: Configuração do Projeto e Conexão
-
-Antes de escrever qualquer transformação de dados, precisamos configurar o ambiente do dbt para ele saber onde conectar e como se comportar.
-
-1. **`load_dw.py`** (na raiz da pasta `dbt/`)
-   - **O que é:** Um script Python usando a biblioteca Pandas. No mercado real, as ferramentas de engenharia de dados extraem dados dos sistemas e carregam no Data Warehouse (EL - Extract, Load). Este script simula isso, puxando os dados de funcionários e apontamentos e salvando na área "raw" do DW.
-   - **Ação:** Instale as bibliotecas (`pip install pandas sqlalchemy psycopg2-binary dbt-postgres`) e execute `python load_dw.py` para popular o DW antes do dbt entrar em ação.
-
-2. **`dbt_project.yml`** (na raiz da pasta `dbt/`)
-   - **O que é:** O coração do projeto dbt. Aqui você define o nome do projeto (`name`), diz em qual schema padrão cada pasta vai gravar seus dados (`marts`, `staging`) e como elas serão materializadas (se vão virar `view` ou `table` no banco).
-
-3. **`profiles.yml`** (na raiz da pasta `dbt/`)
-   - **O que é:** O arquivo de credenciais. Ensina o dbt a se conectar no seu PostgreSQL. Ele precisa saber o `host` (localhost), a porta (5455), usuário e senha.
-
-4. **`packages.yml`** (na raiz da pasta `dbt/`)
-   - **O que é:** O dbt permite instalar pacotes de terceiros (como bibliotecas no Python). Aqui vamos declarar o `dbt-utils`, que nos dá funções prontas (macros) para facilitar a vida, como geradores de chaves e calendário.
-   - **Ação:** Após criar, rode o comando `dbt deps` no terminal.
+> **💡 Por que estamos explicando isso se vocês não vão rodar?**
+> Porque o projeto da aula **já vem pronto** — mas com uma diferença proposital em relação ao padrão: para que todo mundo consiga clonar o repositório e rodar sem precisar configurar arquivos ocultos na própria máquina, **trazemos o `profiles.yml` para a raiz do projeto**. Por isso, sempre que formos rodar um comando dbt, vamos usar a flag `--profiles-dir .`, que diz ao dbt "procure as credenciais na pasta atual, não na pasta oculta do sistema". Isso torna o projeto 100% portátil entre máquinas.
 
 ---
 
-## 🧩 Passo 2: Macros (Funções Reutilizáveis)
+## 🛠️ Etapa 1 — Configuração do projeto e conexão
 
-Macros são pedaços de código SQL que escrevemos uma vez e reutilizamos várias vezes. Pense nelas como as funções do Excel.
+Objetivo: deixar o dbt sabendo *onde* conectar e *como* se comportar, antes de escrever qualquer transformação.
 
-1. **`macros/generate_schema_name.sql`**
-   - **O que é:** Por padrão, o dbt junta o nome do seu schema principal com o da pasta (ex: `public_marts`). Esta macro ensina o dbt a criar schemas limpos, chamando apenas `marts`, `staging`, etc.
+### 📄 `dbt_project.yml` (raiz da pasta `dbt/`)
+**💡 O que é:** o coração do projeto. Define o nome do projeto (`name`), em qual schema cada pasta de modelos vai gravar (`staging`, `marts`, etc.) e como cada camada será materializada (`view` ou `table`).
 
-2. **`macros/pii_macros.sql`**
-   - **O que é:** Aqui vamos colocar nossas funções de conformidade com a LGPD. Macros como `anonimizar_nome` e `hash_pii` (para criptografar o CPF). Usaremos isso lá na frente!
+### 📄 `profiles.yml` (raiz da pasta `dbt/`)
+**💡 O que é:** o arquivo de credenciais. Ensina o dbt a se conectar ao PostgreSQL: `host` (localhost), porta (5455), usuário e senha.
 
----
+### 📄 `packages.yml` (raiz da pasta `dbt/`)
+**💡 O que é:** assim como no Python temos bibliotecas, o dbt permite instalar pacotes de terceiros. Aqui declaramos o `dbt-utils`, que traz macros prontas (geradores de chave, funções de calendário, etc.).
 
-## 📥 Passo 3: Declarando as Fontes (Sources)
+**⌨️ Comando (rodar assim que o `packages.yml` existir):**
+```bash
+dbt deps --profiles-dir .
+```
+Isso baixa e instala os pacotes listados dentro de uma pasta `dbt_packages/`.
 
-O dbt precisa saber quais tabelas já existem no banco antes dele começar a trabalhar.
+### 📄 `load_dw.py` (raiz da pasta `dbt/`)
+**💡 O que é:** um script Python (usando Pandas) que simula o processo de **EL (Extract, Load)** que, no mercado real, é feito por ferramentas de engenharia de dados. Ele extrai os dados de funcionários e apontamentos das bases de origem e carrega na área **raw** do Data Warehouse — ou seja, é o que "alimenta" o banco antes do dbt entrar em ação.
 
-1. **`models/sources/_sources.yml`**
-   - **O que é:** É um mapeamento. Vamos listar as tabelas `funcionario` e `apontamento` que vêm do schema `raw_admin` e `raw_motoristas`.
-   - **Por que fazer isso?** Para podermos usar a sintaxe `{{ source('nome_do_sistema', 'nome_da_tabela') }}` em vez de chumbarmos o nome do schema nos códigos, garantindo o rastreamento da linhagem dos dados.
+**⌨️ Comando:**
+```bash
+python load_dw.py
+```
 
----
-
-## 🧹 Passo 4: Camada Staging (A Limpeza)
-
-A regra de ouro do dbt é: **nunca faça join e limpeza na mesma tabela**. A Staging é uma cópia 1:1 da fonte, apenas para limpar e renomear colunas para um padrão (snake_case). Elas serão materializadas como *Views*.
-
-Crie os 4 arquivos `.sql` dentro da pasta `models/staging/`:
-1. **`stg_admin__funcionarios.sql`**
-2. **`stg_admin__apontamentos.sql`**
-3. **`stg_motoristas__funcionarios.sql`**
-4. **`stg_motoristas__apontamentos.sql`**
-
-E, para fechar a camada, crie a documentação:
-5. **`models/staging/_staging.yml`**
-   - **O que é:** Documenta o que significa cada coluna dessas views criadas e adiciona **testes automáticos** (garantir que o ID não seja nulo e seja único).
+### ✅ Checkpoint da Etapa 1
+Ao final desta etapa, o banco de dados já deve ter os dados brutos carregados, e o dbt já deve conseguir se conectar. Teste com:
+```bash
+dbt debug --profiles-dir .
+```
+Se aparecer `All checks passed!`, pode seguir em frente.
 
 ---
 
-## 🔄 Passo 5: Camada Intermediate (O Motor)
+## 🧩 Etapa 2 — Macros (funções reutilizáveis)
 
-Aqui os dados dos dois sistemas se encontram. É onde a complexidade mora. Elas não gravam tabelas no banco (são `ephemeral`), servem apenas como "ponte" organizadora.
+Macros são pedaços de código SQL escritos uma vez e reutilizados várias vezes — pense neles como funções do Excel.
 
-Crie dentro de `models/intermediate/`:
-1. **`int_funcionarios_unificados.sql`**
-   - **O que é:** Junta (UNION) os motoristas com os administrativos em um listão único e cria uma chave única para cada um (Surrogate Key).
-2. **`int_apontamentos_diarios.sql`**
-   - **O que é:** Transforma os apontamentos brutos. Aqui a lógica une a linha de "Entrada" com a linha de "Saída" para calcular quantas horas a pessoa trabalhou no dia.
-3. **`models/intermediate/_intermediate.yml`**
-   - Para documentar e testar.
+### 📄 `macros/generate_schema_name.sql`
+**💡 O que é:** por padrão, o dbt concatena o schema principal com o nome da pasta (ex: `public_marts`). Esta macro ensina o dbt a criar schemas "limpos", chamados apenas `marts`, `staging`, etc.
 
----
+### 📄 `macros/pii_macros.sql`
+**💡 O que é:** funções de conformidade com a LGPD, como `anonimizar_nome` e `hash_pii` (para criptografar o CPF). Serão usadas mais adiante, na camada Analytics.
 
-## 🌟 Passo 6: Camada Marts (O Data Warehouse)
-
-Estas são as tabelas finais de uso do negócio. Elas gravam fisicamente (`table`) no banco para serem ultrarrápidas. Nós usamos Modelagem Dimensional (Fatos e Dimensões).
-
-Crie dentro de `models/marts/`:
-1. **`dim_funcionario.sql`**
-   - **O que é:** Tabela descritiva de "Quem". Puxa o listão de funcionários e enriquece calculando a idade e o tempo de empresa de cada um.
-2. **`dim_data.sql`**
-   - **O que é:** Tabela de calendário (Dias, Mês, Ano). Gerada via macro.
-3. **`fato_ponto.sql`**
-   - **O que é:** A tabela de eventos (o "O quê"). Aqui juntamos as horas diárias calculadas com as dimensões para sabermos exatamente as horas extras e atrasos de cada funcionário em cada dia.
-4. **`models/marts/_marts.yml`**
-   - Sempre documentando e amarrando relacionamentos (Foreign Keys).
+*(Nenhum comando novo nesta etapa — as macros só passam a valer quando forem chamadas dentro de outros modelos.)*
 
 ---
 
-## 📊 Passo 7: Camada Analytics (Visões do RH)
+## 📥 Etapa 3 — Declarando as fontes (Sources)
 
-Onde entregamos valor imediato para o analista de RH.
+### 📄 `models/sources/_sources.yml`
+**💡 O que é:** um mapeamento das tabelas que **já existem** no banco (vindas do `load_dw.py`), como `funcionario` e `apontamento`, presentes nos schemas `raw_admin` e `raw_motoristas`.
 
-Crie dentro de `models/analytics/`:
-1. **`analytic_horas_mensais.sql`**
-   - Agrupa a `fato_ponto` por mês, somando o saldo de horas de cada funcionário.
-2. **`analytic_absenteismo_departamento.sql`**
-   - Calcula a taxa de faltas cruzando quem bateu ponto contra os dias úteis possíveis.
-3. **`vw_funcionarios_anonimizados.sql`**
-   - Aplica as macros de LGPD (lá do Passo 2) sobre a `dim_funcionario`.
-4. **`models/analytics/_analytics.yml`**
-   - Documenta e explica cada visão.
+**Por que isso importa:** a partir de agora, em vez de escrever o nome do schema "na unha" dentro do SQL, usamos a sintaxe:
+```sql
+{{ source('nome_do_sistema', 'nome_da_tabela') }}
+```
+Isso garante o rastreamento da linhagem dos dados (o dbt consegue desenhar de onde cada tabela final se originou).
 
 ---
 
-## 🧪 Passo 8: Testes Singulares
+## 🧹 Etapa 4 — Camada Staging (a limpeza)
 
-Além dos testes simples no `.yml` (como não nulo), podemos escrever SQLs que testam lógicas complexas. O teste passa se a query retornar 0 linhas.
+**Regra de ouro do dbt:** nunca faça `JOIN` e limpeza na mesma tabela. A Staging é uma cópia 1:1 da fonte, servindo só para limpar e renomear colunas para um padrão único (`snake_case`). Por serem leves, são materializadas como **Views**.
 
-Crie em `tests/`:
-1. **`assert_horas_trabalhadas_positivas.sql`**
-   - Query que procura na `fato_ponto` por horas trabalhadas negativas (um cenário impossível que indicaria bug no cálculo).
-2. **`assert_fato_ponto_sem_duplicatas.sql`**
-   - Garante que não há 2 linhas do mesmo funcionário no mesmo dia.
+### 📄 Criar em `models/staging/`:
+1. `stg_admin__funcionarios.sql`
+2. `stg_admin__apontamentos.sql`
+3. `stg_motoristas__funcionarios.sql`
+4. `stg_motoristas__apontamentos.sql`
+
+### 📄 `models/staging/_staging.yml`
+**💡 O que é:** documenta o significado de cada coluna das views acima e adiciona **testes automáticos** (ex: garantir que o ID não seja nulo e seja único).
+
+### ✅ Checkpoint da Etapa 4
+```bash
+dbt run --select staging --profiles-dir .
+```
+Isso constrói **só** as views de staging, sem tocar no resto — bom para validar essa camada isoladamente antes de seguir.
 
 ---
 
-## 📖 Passo 9: Documentação Geral
+## 🔄 Etapa 5 — Camada Intermediate (o motor)
 
-1. **`docs/overview.md`**
-   - **O que é:** É a capa do seu catálogo de dados! Quando o dbt gerar o site de documentação, o que você escrever em markdown aqui, será a tela de boas-vindas do portal.
+Aqui os dados dos dois sistemas se encontram, e é onde mora a maior parte da complexidade de negócio. Essas tabelas **não gravam nada no banco** (são `ephemeral`) — servem apenas de "ponte" organizadora entre a Staging e a Marts.
+
+### 📄 Criar em `models/intermediate/`:
+1. **`int_funcionarios_unificados.sql`** — junta (`UNION`) motoristas e administrativos em um único "listão" e cria uma chave única (Surrogate Key) para cada pessoa.
+2. **`int_apontamentos_diarios.sql`** — transforma os apontamentos brutos: une a linha de "Entrada" com a linha de "Saída" para calcular quantas horas a pessoa trabalhou naquele dia.
+3. **`_intermediate.yml`** — documentação e testes desta camada.
 
 ---
 
-## ▶️ Passo 10: Colocando tudo para rodar!
+## 🌟 Etapa 6 — Camada Marts (o Data Warehouse)
 
-Abra o seu terminal na pasta `dbt/` e rode na seguinte ordem:
+Estas são as tabelas finais de uso do negócio, gravadas fisicamente (`table`) para consultas rápidas. Usamos **Modelagem Dimensional** (Fatos e Dimensões).
 
-1. Instale o dbt-postgres e dependências rodando: `pip install pandas sqlalchemy psycopg2-binary dbt-postgres`
-2. `dbt deps` (Instala pacotes do packages.yml)
-3. `python load_dw.py` (Copia os dados da base de produção para a base do DW)
-4. `dbt build` (Cria todas as tabelas no banco de dados e roda todos os testes, na ordem exata que elas dependem uma da outra).
-5. `dbt docs generate && dbt docs serve` (Gera o portal web com todo o dicionário de dados e a linhagem desenhada e abre no seu navegador!).
+### 📄 Criar em `models/marts/`:
+1. **`dim_funcionario.sql`** — a dimensão "Quem". Puxa o listão unificado e enriquece com idade e tempo de empresa de cada funcionário.
+2. **`dim_data.sql`** — dimensão de calendário (dia, mês, ano), gerada via macro.
+3. **`fato_ponto.sql`** — a tabela de eventos (o "O quê"). Junta as horas diárias calculadas na Intermediate com as dimensões, para sabermos exatamente horas extras e atrasos de cada funcionário em cada dia.
+4. **`_marts.yml`** — documentação, testes e relacionamentos (chaves estrangeiras) entre fato e dimensões.
 
-**Parabéns! Você construiu um Data Warehouse completo!** 🎉
+### ✅ Checkpoint da Etapa 6
+```bash
+dbt run --select marts --profiles-dir .
+```
+
+---
+
+## 📊 Etapa 7 — Camada Analytics (visões do RH)
+
+Aqui entregamos valor direto para quem vai consumir os dados no dia a dia — o analista de RH.
+
+### 📄 Criar em `models/analytics/`:
+1. **`analytic_horas_mensais.sql`** — agrupa a `fato_ponto` por mês, somando o saldo de horas de cada funcionário.
+2. **`analytic_absenteismo_departamento.sql`** — calcula a taxa de faltas cruzando quem bateu ponto contra os dias úteis possíveis.
+3. **`vw_funcionarios_anonimizados.sql`** — aplica as macros de LGPD (da Etapa 2) sobre a `dim_funcionario`.
+4. **`_analytics.yml`** — documentação de cada visão.
+
+---
+
+## 🧪 Etapa 8 — Testes singulares
+
+Além dos testes simples do `.yml` (não nulo, único), podemos escrever SQLs que testam regras de negócio mais complexas. **O teste passa se a query retornar 0 linhas** (ou seja, "não encontrei nenhum caso de erro").
+
+### 📄 Criar em `tests/`:
+1. **`assert_horas_trabalhadas_positivas.sql`** — procura na `fato_ponto` horas trabalhadas negativas (cenário impossível que indicaria bug no cálculo).
+2. **`assert_fato_ponto_sem_duplicatas.sql`** — garante que não existem 2 linhas do mesmo funcionário no mesmo dia.
+
+---
+
+## 📖 Etapa 9 — Documentação geral
+
+### 📄 `docs/overview.md`
+**💡 O que é:** a capa do catálogo de dados. O texto em markdown escrito aqui vira a tela de boas-vindas do portal de documentação gerado pelo dbt.
+
+---
+
+## ▶️ Etapa 10 — Rodando tudo (execução final)
+
+Com todos os arquivos criados, abra o terminal **dentro da pasta `dbt/`** e rode, **nesta ordem**:
+
+| # | Comando | O que faz |
+|---|---------|-----------|
+| 1 | `pip install pandas sqlalchemy psycopg2-binary dbt-postgres` | Garante que todas as dependências estão instaladas |
+| 2 | `dbt deps --profiles-dir .` | Instala os pacotes declarados em `packages.yml` (ex: `dbt-utils`) |
+| 3 | `python load_dw.py` | Copia os dados da base de origem para a área raw do DW |
+| 4 | `dbt build --profiles-dir .` | Constrói **todas** as tabelas/views, na ordem correta de dependência, e roda todos os testes |
+| 5 | `dbt docs generate --profiles-dir .` | Gera o dicionário de dados e o diagrama de linhagem |
+| 6 | `dbt docs serve --profiles-dir .` | Abre o portal de documentação no navegador |
+
+> 💡 **Por que sempre `--profiles-dir .`?** Porque, como vimos na Etapa 0, o `profiles.yml` deste projeto está na raiz (e não na pasta oculta padrão do dbt). Essa flag avisa o dbt para procurar as credenciais ali.
+
+> 💡 **Diferença entre `dbt run` e `dbt build`:** `dbt run` só executa os modelos (cria as tabelas/views). `dbt build` faz isso **e também** roda os testes automaticamente, na ordem de dependência — por isso é o comando recomendado no final.
+
+---
+
+## 🎉 Resultado esperado
+
+Se tudo rodou sem erros, vocês terão:
+- Um Data Warehouse completo, organizado em camadas (Staging → Intermediate → Marts → Analytics).
+- Testes automáticos garantindo a qualidade dos dados.
+- Um portal de documentação navegável, com a linhagem completa de cada tabela.
+
+**Parabéns, vocês construíram um Data Warehouse do zero com dbt!** 🎉
