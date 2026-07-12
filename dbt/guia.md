@@ -147,6 +147,33 @@ dbt debug --profiles-dir .
 - Se der erro de autenticação (ex: `password authentication failed`), é usuário ou senha incorretos.
 - Se der erro dizendo que o banco (`dbname`) não existe, é preciso criar esse banco no Postgres antes (ou usar o nome correto de um banco já existente).
 
+### 0.4 Entendendo a estrutura de pastas que o `dbt init` cria
+
+Assim que o comando roda, ele gera automaticamente esta árvore de pastas:
+
+```
+├───analyses
+├───logs
+├───macros
+├───models
+│   └───example
+├───seeds
+├───snapshots
+└───tests
+```
+
+**O que cada uma faz:**
+
+- **`analyses/`** — SQL solto que você quer que o dbt compile (resolvendo os `{{ }}` e macros), mas que **não** vira tabela/view no banco. Serve para rascunhos, queries ad-hoc, ou para gerar SQL que você vai colar em outro lugar.
+- **`logs/`** — onde o dbt salva o log detalhado de cada execução (`dbt.log`). Útil para debugar quando um comando falha e a mensagem no terminal não é suficiente.
+- **`macros/`** — as funções reutilizáveis em Jinja+SQL, como as que vamos criar na Etapa 2 deste guia (`generate_schema_name.sql`, `pii_macros.sql`).
+- **`models/`** (com a subpasta `example/`) — o coração do projeto: é aqui que ficam os arquivos `.sql` que viram tabelas/views no banco. A pasta `example/` vem com 2-3 modelos de exemplo só para mostrar a sintaxe — **pode apagar** esses exemplos, porque no nosso projeto vamos organizar tudo em subpastas próprias (`staging/`, `intermediate/`, `marts/`, `analytics/`).
+- **`seeds/`** — pasta para arquivos `.csv` que você quer carregar direto no banco via `dbt seed` (útil para tabelas pequenas e estáticas, tipo uma lista de estados/países). No nosso projeto **não vamos usar essa pasta**, porque quem carrega os dados brutos é o `load_dw.py`.
+- **`snapshots/`** — para capturar o histórico de mudanças de uma tabela ao longo do tempo (Slowly Changing Dimensions). Também **não vamos usar** no nosso projeto — é um tópico mais avançado.
+- **`tests/`** — onde ficam os testes singulares escritos manualmente em SQL, como os do Passo 8 deste guia (`assert_horas_trabalhadas_positivas.sql`).
+
+> 💡 **No projeto da aula**, praticamente só `models/`, `macros/` e `tests/` são usados de fato — `analyses/`, `seeds/` e `snapshots/` ficam vazias e podem ser ignoradas sem problema.
+
 ---
 
 ## 🛠️ Etapa 1 — Configuração do projeto e conexão
