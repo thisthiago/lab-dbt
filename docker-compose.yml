@@ -12,6 +12,11 @@ services:
     volumes:
       - postgres-sistemas-data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
 
   postgres-dw:
     image: postgres:15
@@ -34,7 +39,8 @@ services:
       - SISTEMAS_HOST=postgres-sistemas
       - SISTEMAS_PORT=5432
     depends_on:
-      - postgres-sistemas
+      postgres-sistemas:
+        condition: service_healthy
 
   api:
     build: ./app/api
@@ -49,7 +55,8 @@ services:
       - WEB_USER=${WEB_USER:-admin}
       - WEB_PASSWORD=${WEB_PASSWORD:-admin}
     depends_on:
-      - postgres-sistemas
+      postgres-sistemas:
+        condition: service_healthy
 
   web:
     build: ./app/web
