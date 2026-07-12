@@ -243,6 +243,36 @@ Isso garante o rastreamento da linhagem dos dados (o dbt consegue desenhar de on
 
 **Regra de ouro do dbt:** nunca faça `JOIN` e limpeza na mesma tabela. A Staging é uma cópia 1:1 da fonte, servindo só para limpar e renomear colunas para um padrão único (`snake_case`). Por serem leves, são materializadas como **Views**.
 
+### 💡 O padrão que vocês vão ver em (quase) todo modelo staging
+
+Repare que os modelos staging costumam seguir sempre a mesma estrutura, chamada de **"import CTE"** (ou "source CTE"):
+
+```sql
+with source as (
+    select * from {{ source('admin', 'apontamento') }}
+),
+
+renamed as (
+    select
+        id_funcionario as employee_id,
+        data_hora as timestamp_ponto,
+        tipo_evento as event_type
+    from source
+)
+
+select * from renamed
+```
+
+**Por que não escrever direto `select id_funcionario as employee_id from {{ source(...) }}`, sem separar em dois blocos?**
+
+1. **Cada CTE tem uma responsabilidade só.** O `source` existe só para "importar" a tabela bruta. Toda a limpeza/renomeação fica isolada no `renamed`. Fica visualmente claro onde termina "o dado como veio" e onde começa "o que eu fiz com ele" — é o mesmo princípio de não colocar toda a lógica dentro de uma função só.
+2. **Facilita o debug.** Se algo parecer errado, é só trocar a última linha para `select * from source` e rodar — você vê o dado cru, sem transformação nenhuma, sem precisar comentar um monte de código.
+3. **Um único lugar para trocar a referência.** Se um dia a fonte mudar (nome da tabela, ou até virar outro modelo), só se mexe no CTE `source` — o resto do arquivo nem percebe.
+4. **Consistência entre todos os modelos do projeto.** Como todo mundo segue esse mesmo esqueleto (`source` → `renamed` → `select final`), qualquer pessoa lendo qualquer staging do projeto já sabe onde procurar cada parte, mesmo sem nunca ter visto aquele arquivo antes.
+5. **O `select *` aqui não é o "select * perigoso"** que evitamos em produção — ele só existe dentro do CTE `source`, uma etapa intermediária. O `select` final (`select * from renamed`) está pegando de um CTE que já tem as colunas explícitas e nomeadas, então no fundo o "*" ali só está repassando o que já foi definido acima.
+
+> 🎯 **Na prática:** todo arquivo que vocês criarem em `models/staging/` deve seguir esse esqueleto: um CTE `source` puxando a tabela via `{{ source(...) }}`, um (ou mais) CTE de transformação renomeando/limpando colunas, e um `select` final no fim do arquivo.
+
 ### 📄 Criar em `models/staging/`:
 1. `stg_admin__funcionarios.sql`
 2. `stg_admin__apontamentos.sql`
