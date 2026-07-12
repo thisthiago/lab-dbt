@@ -96,6 +96,57 @@ Esse comando:
 > **💡 Por que estamos explicando isso se vocês não vão rodar?**
 > Porque o projeto da aula **já vem pronto** — mas com uma diferença proposital em relação ao padrão: para que todo mundo consiga clonar o repositório e rodar sem precisar configurar arquivos ocultos na própria máquina, **trazemos o `profiles.yml` para a raiz do projeto**. Por isso, sempre que formos rodar um comando dbt, vamos usar a flag `--profiles-dir .`, que diz ao dbt "procure as credenciais na pasta atual, não na pasta oculta do sistema". Isso torna o projeto 100% portátil entre máquinas.
 
+### 0.3 Exemplo real do fluxo interativo (se alguém quiser testar por conta própria)
+
+Se você rodar o `dbt init` (fora do projeto da aula, só para praticar), o terminal vai perguntar campo por campo. Um exemplo real de preenchimento, usando um banco Postgres local:
+
+```
+$ dbt init banco_horas_dbt
+
+Which database would you like to use?
+[1] postgres
+Enter a number: 1
+host (hostname for the instance): localhost
+port [5432]: 5455
+user (dev username): postgres
+pass (dev password):
+dbname (default database that dbt will build objects in): db_dw
+schema (default schema that dbt will build objects in): public
+threads (1 or more) [1]: 1
+
+Profile banco_horas_dbt written to C:\Users\<usuario>\.dbt\profiles.yml ...
+```
+
+**O que cada campo significa:**
+- **host**: `localhost` porque o Postgres está rodando na própria máquina (ex: via Docker).
+- **port**: a porta em que o Postgres está exposto — aqui `5455` em vez da porta padrão `5432`, normalmente porque já existe outro Postgres rodando na `5432` (ex: uma instalação local) e o do curso foi mapeado numa porta diferente para não conflitar.
+- **user** / **pass**: as credenciais de acesso ao banco.
+- **dbname**: o banco de dados dentro do Postgres onde o dbt vai criar as tabelas/views.
+- **schema**: o "namespace" padrão dentro do banco onde os objetos serão criados (isso pode ser sobrescrito depois pela macro `generate_schema_name.sql` que vamos criar na Etapa 2).
+- **threads**: quantos modelos o dbt pode rodar em paralelo. `1` é mais lento, mas mais previsível para aprender — depois dá pra aumentar.
+
+**Onde isso foi parar:** repare que o dbt escreveu o resultado em `C:\Users\<usuario>\.dbt\profiles.yml` — a pasta **oculta e global** do usuário, e não na raiz do projeto. Isso é o comportamento padrão do `dbt init`. Se essa conexão for só para um teste pessoal (fora do repositório da aula), tudo bem deixar assim. Mas se for para o projeto da disciplina, o ideal é copiar esse bloco gerado para o `profiles.yml` que já existe na raiz do repositório do curso, para manter a portabilidade explicada acima.
+
+### ✅ Como testar se a conexão funcionou
+
+Depois do `dbt init` (ou de configurar o `profiles.yml` manualmente), teste a conexão com:
+
+```bash
+dbt debug
+```
+
+Se você tiver salvo o profile na pasta global (como no exemplo acima), roda assim, sem flag. Se estiver usando um `profiles.yml` na raiz do projeto (como no repositório da aula), use:
+
+```bash
+dbt debug --profiles-dir .
+```
+
+**O que esperar:**
+- Se tudo estiver certo, o final da saída mostra algo como `All checks passed!` — significa que o dbt conseguiu ler o `profiles.yml`, o `dbt_project.yml`, e efetivamente abrir uma conexão com o Postgres usando as credenciais informadas.
+- Se der erro de conexão (ex: `connection refused`), geralmente é porque o Postgres não está rodando, ou a porta/host informados estão errados — vale conferir se o container/serviço do banco está de pé.
+- Se der erro de autenticação (ex: `password authentication failed`), é usuário ou senha incorretos.
+- Se der erro dizendo que o banco (`dbname`) não existe, é preciso criar esse banco no Postgres antes (ou usar o nome correto de um banco já existente).
+
 ---
 
 ## 🛠️ Etapa 1 — Configuração do projeto e conexão
