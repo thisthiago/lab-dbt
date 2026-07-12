@@ -67,7 +67,7 @@ dbt/
 
 ```bash
 # Instalar dependências do dbt e do script Python
-pip install pandas sqlalchemy psycopg2-binary
+pip install pandas sqlalchemy psycopg2-binary dbt-postgres
 dbt deps
 
 # Executar a carga bruta (Extrai do OLTP, joga no DW)

@@ -12,7 +12,7 @@ Antes de escrever qualquer transformação de dados, precisamos configurar o amb
 
 1. **`load_dw.py`** (na raiz da pasta `dbt/`)
    - **O que é:** Um script Python usando a biblioteca Pandas. No mercado real, as ferramentas de engenharia de dados extraem dados dos sistemas e carregam no Data Warehouse (EL - Extract, Load). Este script simula isso, puxando os dados de funcionários e apontamentos e salvando na área "raw" do DW.
-   - **Ação:** Instale as bibliotecas (`pip install pandas sqlalchemy psycopg2-binary`) e execute `python load_dw.py` para popular o DW antes do dbt entrar em ação.
+   - **Ação:** Instale as bibliotecas (`pip install pandas sqlalchemy psycopg2-binary dbt-postgres`) e execute `python load_dw.py` para popular o DW antes do dbt entrar em ação.
 
 2. **`dbt_project.yml`** (na raiz da pasta `dbt/`)
    - **O que é:** O coração do projeto dbt. Aqui você define o nome do projeto (`name`), diz em qual schema padrão cada pasta vai gravar seus dados (`marts`, `staging`) e como elas serão materializadas (se vão virar `view` ou `table` no banco).
@@ -133,9 +133,10 @@ Crie em `tests/`:
 
 Abra o seu terminal na pasta `dbt/` e rode na seguinte ordem:
 
-1. `dbt deps` (Instala pacotes do packages.yml)
-2. `python load_dw.py` (Copia os dados da base de produção para a base do DW)
-3. `dbt build` (Cria todas as tabelas no banco de dados e roda todos os testes, na ordem exata que elas dependem uma da outra).
-4. `dbt docs generate && dbt docs serve` (Gera o portal web com todo o dicionário de dados e a linhagem desenhada e abre no seu navegador!).
+1. Instale o dbt-postgres e dependências rodando: `pip install pandas sqlalchemy psycopg2-binary dbt-postgres`
+2. `dbt deps` (Instala pacotes do packages.yml)
+3. `python load_dw.py` (Copia os dados da base de produção para a base do DW)
+4. `dbt build` (Cria todas as tabelas no banco de dados e roda todos os testes, na ordem exata que elas dependem uma da outra).
+5. `dbt docs generate && dbt docs serve` (Gera o portal web com todo o dicionário de dados e a linhagem desenhada e abre no seu navegador!).
 
 **Parabéns! Você construiu um Data Warehouse completo!** 🎉
