@@ -88,6 +88,11 @@ Em um projeto criado do zero, o comando oficial de inicialização é:
 dbt init meu_projeto_dbt
 ```
 
+Ou se quiser pular a configuração via CLI:
+```bash
+dbt init meu_projeto_dbt --skip-profile-setup
+```
+
 Esse comando:
 1. Faz perguntas interativas no terminal (ex: qual banco de dados usar → `postgres`).
 2. Pede os dados de conexão e os salva em um arquivo **oculto e global**, geralmente em `~/.dbt/profiles.yml` (Mac/Linux) ou `C:\Users\usuario\.dbt\profiles.yml` (Windows).
