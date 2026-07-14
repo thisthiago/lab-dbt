@@ -293,6 +293,112 @@ dbt run --select staging --profiles-dir .
 ```
 Isso constrói **só** as views de staging, sem tocar no resto — bom para validar essa camada isoladamente antes de seguir.
 
+## 🧱 Entendendo as Materializações do dbt
+
+Uma das principais decisões ao criar um modelo no dbt é definir **como ele será materializado**, ou seja, qual objeto será criado (ou não) no banco de dados.
+
+### 📦 Table (Tabela)
+
+O dbt executa o modelo usando um comando semelhante a:
+
+```sql
+CREATE OR REPLACE TABLE ...
+AS
+SELECT ...
+```
+
+Os dados ficam armazenados fisicamente no Data Warehouse.
+
+**Quando usar:**
+- Relatórios e dashboards.
+- Camada **Marts** ou **Gold**.
+- Modelos grandes ou com transformações pesadas que não devem ser recalculadas a cada consulta.
+
+**Vantagens**
+- Consultas rápidas.
+- Menor custo de processamento nas leituras.
+
+**Desvantagens**
+- Ocupa espaço de armazenamento.
+- Precisa ser atualizada quando os dados mudam.
+
+---
+
+### 👁️ View (Visualização)
+
+O dbt cria uma view usando:
+
+```sql
+CREATE OR REPLACE VIEW ...
+AS
+SELECT ...
+```
+
+Nenhum dado é armazenado. A consulta é executada sempre que alguém acessa a view.
+
+**Quando usar:**
+- Camada **Staging**.
+- Transformações leves.
+- Dados que precisam estar sempre atualizados.
+
+**Vantagens**
+- Não duplica dados.
+- Ocupa praticamente nenhum espaço.
+- Sempre reflete os dados mais recentes.
+
+**Desvantagens**
+- Consultas complexas podem ficar mais lentas, pois o processamento acontece em tempo real a cada leitura.
+
+---
+
+### ⚡ Ephemeral (Efêmero)
+
+Um modelo `ephemeral` **não cria tabela nem view** no banco de dados.
+
+Quando outro modelo faz uma referência como:
+
+```sql
+{{ ref('int_apontamentos_diarios') }}
+```
+
+o dbt substitui essa referência pelo SQL completo do modelo, inserindo-o diretamente na consulta final como uma **CTE (Common Table Expression)**.
+
+Na prática, o modelo existe apenas durante a compilação do projeto.
+
+**Quando usar:**
+- Lógicas de negócio reutilizáveis.
+- Limpezas intermediárias.
+- Modelos auxiliares que não precisam ficar visíveis para os usuários do banco.
+
+**Vantagens**
+- Mantém o banco de dados limpo.
+- Evita criar tabelas intermediárias.
+- Incentiva um código mais organizado e modular.
+
+**Desvantagens**
+- Se muitos modelos utilizarem o mesmo `ephemeral`, o SQL compilado pode ficar bastante grande e mais difícil de analisar.
+
+---
+
+## 🎯 Resumindo
+
+| Materialização | Cria objeto no banco? | Melhor uso |
+|----------------|-----------------------|------------|
+| **View** | ✅ Sim | Camada Staging e transformações leves |
+| **Ephemeral** | ❌ Não | Camada Intermediate e lógica reutilizável |
+| **Table** | ✅ Sim | Camada Marts/Gold e tabelas finais |
+
+Neste projeto utilizaremos exatamente este padrão:
+
+- **Staging → View**
+- **Intermediate → Ephemeral**
+- **Marts → Table**
+- **Analytics → View** (por serem consultas derivadas das tabelas finais)
+
+> 💡 **Por que Analytics também é View?** As tabelas da camada Marts já concentram toda a lógica pesada de transformação e ficam armazenadas fisicamente no banco. As consultas da camada Analytics normalmente apenas agregam, filtram ou apresentam esses dados para consumo pelo negócio. Como são transformações leves e precisam refletir sempre os dados mais recentes, faz sentido materializá-las como **Views**, evitando duplicação de dados e reduzindo o espaço de armazenamento.
+
+> 📚 Para mais detalhes, consulte a documentação oficial do dbt sobre **Materializations**.
+
 ---
 
 ## 🔄 Etapa 5 — Camada Intermediate (o motor)
@@ -346,6 +452,8 @@ Além dos testes simples do `.yml` (não nulo, único), podemos escrever SQLs qu
 ---
 
 ## 📖 Etapa 9 — Documentação geral
+
+
 
 ### 📄 `docs/overview.md`
 **💡 O que é:** a capa do catálogo de dados. O texto em markdown escrito aqui vira a tela de boas-vindas do portal de documentação gerado pelo dbt.
